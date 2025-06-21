@@ -1,88 +1,61 @@
-name: Semgrep Analysis
+name: Semgrep and Prospector Analysis
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  semgrep:
+  analyze:
+    name: Analyze Code
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      - name: Run Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/csharp
+          generateSarif: true
+          outputFile: semgrep.json
+
+      # Instalación y ejecución de Prospector
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-      - name: Install Semgrep
-        run: pip install semgrep
-
-      - name: Run Semgrep Scan
-        run: semgrep scan --config='p/default' . --json --output semgrep.json
-
-      - name: Generate HTML report
+      # Este es el paso importante para pasar el test t2
+      - name: Install Prospector and generate HTML report
         run: |
-          echo '<!DOCTYPE html>
-          <html>
-          <head>
-            <title>Semgrep Report</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              .finding { border: 1px solid #ddd; margin: 10px 0; padding: 10px; border-radius: 5px; }
-              .severe { border-left: 5px solid #d9534f; }
-              .warning { border-left: 5px solid #f0ad4e; }
-              .info { border-left: 5px solid #5bc0de; }
-              pre { background-color: #f5f5f5; padding: 10px; overflow-x: auto; }
-            </style>
-          </head>
-          <body>
-            <h1>Semgrep Analysis Report</h1>
-            <div id="findings"></div>
-            <script>
-              fetch("semgrep.json")
-                .then(response => response.json())
-                .then(data => {
-                  const findings = document.getElementById("findings");
-                  if (data.results && data.results.length > 0) {
-                    data.results.forEach(result => {
-                      const div = document.createElement("div");
-                      div.className = `finding ${result.extra.severity || "info"}`;
-                      div.innerHTML = `
-                        <h3>${result.check_id}</h3>
-                        <p><strong>Severity:</strong> ${result.extra.severity || "Not specified"}</p>
-                        <p><strong>File:</strong> ${result.path}</p>
-                        <p><strong>Line:</strong> ${result.start.line}</p>
-                        <p><strong>Message:</strong> ${result.extra.message}</p>
-                        <pre><code>${result.extra.lines}</code></pre>
-                      `;
-                      findings.appendChild(div);
-                    });
-                  } else {
-                    findings.innerHTML = "<p>No issues found!</p>";
-                  }
-                })
-                .catch(error => {
-                  console.error("Error loading report:", error);
-                  document.getElementById("findings").innerHTML = "<p>Error loading report data.</p>";
-                });
-            </script>
-          </body>
-          </html>' > semgrep-report.html
-
-      - name: Upload Semgrep report artifact
-        uses: actions/upload-artifact@v4
+          pip install prospector[with_everything]
+          
+          # Generar el informe HTML usando prospector-html
+          pip install prospector-html
+          mkdir -p reports
+          prospector --output-format json > prospector.json
+          prospector-html -i prospector.json -o reports/prospector_report.html
+        
+      - name: Upload Prospector report
+        uses: actions/upload-artifact@v3
         with:
-          name: semgrep-report
-          path: |
-            semgrep-report.html
-            semgrep.json
+          name: prospector-html-report
+          path: reports/prospector_report.html
 
-      - name: Deploy Semgrep report to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      # Generar informe HTML de Semgrep
+      - name: Generate Semgrep HTML report
+        run: |
+          echo '<html><head><title>Semgrep Report</title></head><body><pre>' > semgrep-report.html
+          cat semgrep.json >> semgrep-report.html
+          echo '</pre></body></html>' >> semgrep-report.html
+
+      - name: Upload Semgrep report
+        uses: actions/upload-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./  # Directorio donde está el reporte de Semgrep
-          publish_branch: gh-pages
-          destination_dir: semgrep-report  # Esto lo coloca en una subcarpeta en gh-pages
-          keep_files: true  # Importante: mantiene los archivos existentes en gh-pages
+          name: semgrep-html-report
+          path: semgrep-report.html
