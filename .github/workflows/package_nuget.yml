@@ -168,3 +168,5 @@ jobs:
           else
             echo "No NuGet packages found to publish"
           fi
+      - name: List NuGet Packages
+        run: ls -l nupkg
