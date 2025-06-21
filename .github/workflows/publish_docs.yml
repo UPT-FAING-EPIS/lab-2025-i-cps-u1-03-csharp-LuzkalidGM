@@ -12,15 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Copiar disenio.md de Bank a la raíz (Solo este paso nuevo)
-      - name: Copy design document to root
-        run: |
-          # Copiar el archivo de diseño de Bank a la raíz
-          cp Bank/disenio.md ./disenio.md
-          echo "File copied to root:"
-          ls -la disenio.md
-
-      # Configurar Ruby (el resto del workflow se mantiene igual)
+      # Configurar Ruby
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
