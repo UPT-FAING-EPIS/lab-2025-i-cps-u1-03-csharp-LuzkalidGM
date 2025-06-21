@@ -12,17 +12,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create symlink to Bank/docs
-        run: |
-          rm -rf docs || true
-          ln -s Bank/docs docs
-
-      - name: Setup Jekyll
-        uses: actions/jekyll-build-pages@v1
+      # Configurar Ruby
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
         with:
-          source: ./docs
-          destination: ./_site
+          ruby-version: '3.1'
+          bundler-cache: true
 
+      # Instalar Jekyll y sus dependencias
+      - name: Install Jekyll
+        run: |
+          gem install bundler jekyll
+          bundle init
+          bundle add jekyll
+          bundle add github-pages
+
+      # Construir el sitio con Jekyll
+      - name: Build site
+        run: |
+          cd Bank/docs
+          bundle exec jekyll build --baseurl "" -d ../../_site
+
+      # Publicar en GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
