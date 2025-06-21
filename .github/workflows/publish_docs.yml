@@ -24,10 +24,8 @@ jobs:
       - name: Build DocFX Site
         run: docfx build docfx.json
 
-      - name: Deploy to GitHub Pages
+      - name: Build and deploy
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./_site
-          publish_branch: gh-pages
-          force_orphan: false
+          publish_dir: ./Bank/docs
