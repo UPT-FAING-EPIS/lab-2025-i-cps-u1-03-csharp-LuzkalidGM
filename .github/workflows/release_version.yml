@@ -39,65 +39,52 @@ jobs:
           
           echo "===== FINDING ALL .CSPROJ FILES IN REPO ====="
           find . -name "*.csproj"
-
-      # Intento directo con archivos encontrados
-      - name: Direct restore with found solution
-        run: |
-          SOLUTION_FILE=$(find . -name "*.sln" | head -n 1)
           
-          if [ -n "$SOLUTION_FILE" ]; then
-            echo "Found solution file: $SOLUTION_FILE"
-            # Verifica que el archivo existe
-            if [ -f "$SOLUTION_FILE" ]; then
-              echo "File exists, attempting restore..."
-              dotnet restore "$SOLUTION_FILE"
-            else
-              echo "File doesn't actually exist despite find command"
-            fi
+          echo "===== EXAMINE THE BANK DIRECTORY ====="
+          ls -la Bank/
+
+      # Usando la ruta explícita que vimos en tu estructura
+      - name: Restore dependencies with explicit path
+        run: |
+          # Prueba con ruta completa absoluta
+          REPO_ROOT=$(pwd)
+          echo "Repositorio raíz: $REPO_ROOT"
+          
+          if [ -f "$REPO_ROOT/Bank/Bank.sln" ]; then
+            echo "Encontrada solución en $REPO_ROOT/Bank/Bank.sln"
+            cd Bank
+            dotnet restore Bank.sln
           else
-            echo "No solution file found in repository"
-            
-            # Intenta con proyecto en su lugar
-            PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
-            if [ -n "$PROJECT_FILE" ]; then
-              echo "Found project file: $PROJECT_FILE"
-              dotnet restore "$PROJECT_FILE"
-            else
-              echo "No project files found either"
+            echo "No se encontró la solución en la ruta esperada"
+            # Búsqueda alternativa
+            SOLUTION_PATH=$(find . -name "Bank.sln" -type f | head -n 1)
+            if [ -n "$SOLUTION_PATH" ]; then
+              echo "Solución encontrada en: $SOLUTION_PATH"
+              dotnet restore "$SOLUTION_PATH"
             fi
           fi
 
-      # Compilación usando archivos encontrados
-      - name: Build with found files
+      # Compilar con la ruta explícita
+      - name: Build
         if: success()
         run: |
-          SOLUTION_FILE=$(find . -name "*.sln" | head -n 1)
-          if [ -n "$SOLUTION_FILE" ]; then
-            echo "Building solution: $SOLUTION_FILE"
-            dotnet build "$SOLUTION_FILE" --configuration Release
-          else
-            PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
-            if [ -n "$PROJECT_FILE" ]; then
-              echo "Building project: $PROJECT_FILE"
-              dotnet build "$PROJECT_FILE" --configuration Release
-            fi
+          if [ -f "Bank/Bank.sln" ]; then
+            cd Bank
+            dotnet build Bank.sln --configuration Release
           fi
 
-      # Empaquetado con archivos encontrados
-      - name: Pack with found files
+      # Empaquetar el proyecto WebApi
+      - name: Pack
         if: success()
         run: |
-          CSPROJ_FILE=$(find . -name "*.csproj" | head -n 1)
-          if [ -n "$CSPROJ_FILE" ]; then
-            echo "Packing project: $CSPROJ_FILE"
-            dotnet pack "$CSPROJ_FILE" --configuration Release --output nupkg
-          else
-            echo "No project file found for packing"
+          if [ -f "Bank/Bank.WebApi/Bank.WebApi.csproj" ]; then
+            cd Bank
+            dotnet pack Bank.WebApi/Bank.WebApi.csproj --configuration Release --output ../nupkg
           fi
 
-      # Publicación del paquete si existe
+      # Publicar el paquete
       - name: Create GitHub Release
-        if: success() && hashFiles('nupkg/*.nupkg') != ''
+        if: success()
         uses: softprops/action-gh-release@v2
         with:
           files: nupkg/*.nupkg
