@@ -15,6 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Verificar estructura de directorios para diagnóstico
+      - name: Check directory structure
+        run: |
+          echo "Current directory:"
+          ls -la
+          echo "Bank directory:"
+          ls -la Bank/
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -23,14 +31,22 @@ jobs:
       - name: Install coverlet and reportgenerator
         run: dotnet tool install --global coverlet.console
 
+      # Modificación: navegar al directorio donde está la solución
       - name: Restore dependencies
-        run: dotnet restore
+        run: |
+          cd Bank
+          dotnet restore
 
+      # Modificación: navegar al directorio donde está la solución
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: |
+          cd Bank
+          dotnet build --no-restore --configuration Release
 
+      # Modificación: ajustar ruta para test
       - name: Run Unit Tests with Coverage
         run: |
+          cd Bank
           dotnet test Bank.WebApi.Tests/Bank.WebApi.Tests.csproj --collect:"XPlat Code Coverage"
 
       - name: Analyze with SonarCloud
@@ -40,8 +56,13 @@ jobs:
           projectKey: ${{ secrets.SONAR_PROJECT_KEY }}
           token: ${{ secrets.SONAR_TOKEN }}
 
+      # Modificación: ajustar ruta para pack
       - name: Pack NuGet Package
-        run: dotnet pack Bank.Domain/Bank.Domain.csproj --configuration Release --output nupkg
+        run: |
+          cd Bank
+          dotnet pack Bank.Domain/Bank.Domain.csproj --configuration Release --output ../nupkg
 
+      # La ruta de los paquetes está ahora en la raíz en el directorio nupkg
       - name: Publish to GitHub NuGet
-        run: dotnet nuget push nupkg/*.nupkg --source "github" --api-key ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dotnet nuget push nupkg/*.nupkg --source "github" --api-key ${{ secrets.GITHUB_TOKEN }}
