@@ -17,11 +17,14 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Restore dependencies
+        run: dotnet restore Bank/Bank.sln
+
       - name: Build Release
-        run: dotnet build Bank.Domain/Bank.Domain.csproj --configuration Release
+        run: dotnet build Bank/Bank.sln --configuration Release --no-restore
 
       - name: Pack NuGet Package
-        run: dotnet pack Bank.Domain/Bank.Domain.csproj --configuration Release --output nupkg
+        run: dotnet pack Bank/Bank.WebApi/Bank.WebApi.csproj --configuration Release --no-build --output nupkg
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
