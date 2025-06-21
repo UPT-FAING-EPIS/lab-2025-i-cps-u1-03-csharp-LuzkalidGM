@@ -42,7 +42,7 @@ jobs:
           prospector-html -i prospector.json -o reports/prospector_report.html
         
       - name: Upload Prospector report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # Actualizado de v3 a v4
         with:
           name: prospector-html-report
           path: reports/prospector_report.html
@@ -55,7 +55,7 @@ jobs:
           echo '</pre></body></html>' >> semgrep-report.html
 
       - name: Upload Semgrep report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # Actualizado de v3 a v4
         with:
           name: semgrep-html-report
           path: semgrep-report.html
