@@ -1,0 +1,47 @@
+name: Build & Publish NuGet Package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test-analyze-pack:
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      NUGET_API_KEY: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install coverlet and reportgenerator
+        run: dotnet tool install --global coverlet.console
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run Unit Tests with Coverage
+        run: |
+          dotnet test Bank.WebApi.Tests/Bank.WebApi.Tests.csproj --collect:"XPlat Code Coverage"
+
+      - name: Analyze with SonarCloud
+        uses: sonarsource/sonarcloud-github-action@v2
+        with:
+          organization: ${{ secrets.SONAR_ORG }}
+          projectKey: ${{ secrets.SONAR_PROJECT_KEY }}
+          token: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Pack NuGet Package
+        run: dotnet pack Bank.Domain/Bank.Domain.csproj --configuration Release --output nupkg
+
+      - name: Publish to GitHub NuGet
+        run: dotnet nuget push nupkg/*.nupkg --source "github" --api-key ${{ secrets.GITHUB_TOKEN }}

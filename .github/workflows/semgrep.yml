@@ -1,0 +1,43 @@
+name: Semgrep Analysis
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+
+      - name: Install Semgrep and prospector-html
+        run: |
+          pip install semgrep prospector-html
+
+      - name: Run Semgrep Scan
+        run: semgrep scan --config='p/default' . --json --output semgrep.json
+
+      - name: Generate HTML report
+        run: prospector-html --input semgrep.json --output semgrep-report.html --filter semgrep
+
+      - name: Upload Semgrep report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: semgrep-report.html
+
+      - name: Deploy Semgrep report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+          publish_branch: gh-pages
+          keep_files: true
+          destination_dir: semgrep-report
+          force_orphan: false
+          exclude_assets: '.gitignore'
