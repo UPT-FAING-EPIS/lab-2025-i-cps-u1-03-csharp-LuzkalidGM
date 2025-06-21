@@ -12,26 +12,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Configurar Ruby
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      # Crear enlace simbólico para que Jekyll encuentre los archivos
+      - name: Create symlink from docs to Bank/docs
+        run: |
+          # Verificar si existe la carpeta docs en la raíz y eliminarla si existe
+          if [ -d "docs" ]; then
+            rm -rf docs
+          fi
+          
+          # Crear un enlace simbólico de docs a Bank/docs
+          ln -s Bank/docs docs
+          
+          # Verificar que el enlace se creó correctamente
+          ls -la
+          ls -la docs
+
+      # Construir el sitio con Jekyll usando la acción oficial
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
         with:
-          ruby-version: '3.1'
-          bundler-cache: true
-
-      # Instalar Jekyll y sus dependencias
-      - name: Install Jekyll
-        run: |
-          gem install bundler jekyll
-          bundle init
-          bundle add jekyll
-          bundle add github-pages
-
-      # Construir el sitio con Jekyll
-      - name: Build site
-        run: |
-          cd Bank/docs
-          bundle exec jekyll build --baseurl "" -d ../../_site
+          source: ./docs
+          destination: ./_site
 
       # Publicar en GitHub Pages
       - name: Deploy to GitHub Pages
