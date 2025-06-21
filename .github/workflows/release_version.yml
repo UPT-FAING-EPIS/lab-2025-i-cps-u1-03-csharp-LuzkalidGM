@@ -11,14 +11,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Asegura que todo el historial esté disponible
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
+      - name: List directory structure
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -la
+          echo "Bank directory contents:"
+          ls -la Bank/ || echo "Bank directory not found"
+          echo "Looking for solution file:"
+          find . -name "*.sln" || echo "No solution files found"
+
       - name: Restore dependencies
-        run: dotnet restore Bank/Bank.sln
+        run: |
+          if [ -f "Bank/Bank.sln" ]; then
+            dotnet restore Bank/Bank.sln
+          else
+            echo "Solution file not found at Bank/Bank.sln"
+            exit 1
+          fi
 
       - name: Build Release
         run: dotnet build Bank/Bank.sln --configuration Release --no-restore
