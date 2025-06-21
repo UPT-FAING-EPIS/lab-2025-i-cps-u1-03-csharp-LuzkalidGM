@@ -76,6 +76,12 @@ jobs:
           EOL
           fi
 
+      # Crear un enlace simbólico para el directorio docs
+      - name: Create symlink for docs directory
+        run: |
+          if [ -d "docs" ]; then rm -rf docs; fi
+          ln -s Bank/docs docs
+
       # Instalar Jekyll y construir el sitio directamente
       - name: Install Jekyll and build site
         run: |
@@ -110,3 +116,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
           force_orphan: true
+
+      # Debug environment
+      - name: Debug environment
+        run: env | sort
