@@ -12,27 +12,41 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Crear enlace simbólico para que Jekyll encuentre los archivos
-      - name: Create symlink from docs to Bank/docs
-        run: |
-          # Verificar si existe la carpeta docs en la raíz y eliminarla si existe
-          if [ -d "docs" ]; then
-            rm -rf docs
-          fi
-          
-          # Crear un enlace simbólico de docs a Bank/docs
-          ln -s Bank/docs docs
-          
-          # Verificar que el enlace se creó correctamente
-          ls -la
-          ls -la docs
-
-      # Construir el sitio con Jekyll usando la acción oficial
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
+      # Configurar Ruby
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
         with:
-          source: ./docs
-          destination: ./_site
+          ruby-version: '3.1'
+
+      # Mostrar la estructura de directorios para diagnóstico
+      - name: Check directory structure
+        run: |
+          echo "Checking directory structure..."
+          ls -la
+          echo "Bank directory contents:"
+          ls -la Bank/
+          echo "Bank/docs directory contents:"
+          ls -la Bank/docs/
+          echo "Bank/docs/assets/css directory contents:"
+          ls -la Bank/docs/assets/css/
+
+      # Instalar Jekyll y construir el sitio directamente
+      - name: Install Jekyll and build site
+        run: |
+          gem install bundler jekyll
+          echo "Creating Gemfile..."
+          cat > Gemfile << EOL
+          source 'https://rubygems.org'
+          gem 'jekyll'
+          gem 'github-pages', group: :jekyll_plugins
+          EOL
+          
+          echo "Installing dependencies..."
+          bundle install
+          
+          echo "Building Jekyll site from Bank/docs..."
+          cd Bank/docs
+          bundle exec jekyll build --baseurl "" -d ../../_site
 
       # Publicar en GitHub Pages
       - name: Deploy to GitHub Pages
