@@ -19,58 +19,59 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # Paso de diagnóstico super detallado
-      - name: Super detailed diagnostic
+      # Diagnóstico paso a paso para encontrar el problema exacto
+      - name: Detailed Path Diagnostics
         run: |
-          echo "===== WORKSPACE ROOT CONTENTS ====="
-          ls -la
+          echo "===== CURRENT WORKING DIRECTORY ====="
+          pwd
           
-          echo "===== CHECKING FOR BANK DIRECTORY (EXACT CASE) ====="
-          find . -maxdepth 1 -type d -name "Bank" | wc -l
-          
-          echo "===== CHECKING FOR ANY CASE OF BANK ====="
-          find . -maxdepth 1 -type d -iname "bank" | wc -l
-          
-          echo "===== LISTING ALL DIRECTORIES ====="
-          find . -maxdepth 1 -type d
-          
-          echo "===== FINDING ALL .SLN FILES IN REPO ====="
-          find . -name "*.sln"
-          
-          echo "===== FINDING ALL .CSPROJ FILES IN REPO ====="
-          find . -name "*.csproj"
-          
-          echo "===== EXAMINE THE BANK DIRECTORY ====="
+          echo "===== LIST BANK DIRECTORY ====="
           ls -la Bank/
-
-      # Usando la ruta explícita que vimos en tu estructura
-      - name: Restore dependencies with explicit path
-        run: |
-          # Prueba con ruta completa absoluta
-          REPO_ROOT=$(pwd)
-          echo "Repositorio raíz: $REPO_ROOT"
           
-          if [ -f "$REPO_ROOT/Bank/Bank.sln" ]; then
-            echo "Encontrada solución en $REPO_ROOT/Bank/Bank.sln"
-            cd Bank
-            dotnet restore Bank.sln
+          echo "===== CHECK IF BANK.SLN EXISTS ====="
+          if [ -f "Bank/Bank.sln" ]; then
+            echo "Bank.sln exists at Bank/Bank.sln"
           else
-            echo "No se encontró la solución en la ruta esperada"
-            # Búsqueda alternativa
-            SOLUTION_PATH=$(find . -name "Bank.sln" -type f | head -n 1)
-            if [ -n "$SOLUTION_PATH" ]; then
-              echo "Solución encontrada en: $SOLUTION_PATH"
-              dotnet restore "$SOLUTION_PATH"
+            echo "Bank.sln DOES NOT exist at Bank/Bank.sln"
+          fi
+          
+          echo "===== CHECK FILE PERMISSIONS ====="
+          ls -la Bank/Bank.sln || echo "No se puede listar Bank/Bank.sln"
+          
+          echo "===== FIND ALL .SLN FILES (CASE INSENSITIVE) ====="
+          find . -type f -iname "*.sln"
+
+      # Intento directo con la ruta completa sin cambiar directorios
+      - name: Restore with full path
+        run: |
+          # Intenta con la ruta completa sin cambiar directorio
+          if [ -f "Bank/Bank.sln" ]; then
+            echo "Restaurando con ruta completa"
+            dotnet restore "Bank/Bank.sln"
+          else
+            SOLUTION_FILE=$(find . -type f -iname "*.sln" | head -n 1)
+            if [ -n "$SOLUTION_FILE" ]; then
+              echo "Restaurando con archivo encontrado: $SOLUTION_FILE"
+              dotnet restore "$SOLUTION_FILE"
+            else
+              echo "No se encontró ningún archivo .sln"
+              exit 1
             fi
           fi
 
-      # Compilar con la ruta explícita
+      # Compilar usando la misma estrategia
       - name: Build
         if: success()
         run: |
           if [ -f "Bank/Bank.sln" ]; then
-            cd Bank
-            dotnet build Bank.sln --configuration Release
+            echo "Compilando con ruta completa"
+            dotnet build "Bank/Bank.sln" --configuration Release --no-restore
+          else
+            SOLUTION_FILE=$(find . -type f -iname "*.sln" | head -n 1)
+            if [ -n "$SOLUTION_FILE" ]; then
+              echo "Compilando con archivo encontrado: $SOLUTION_FILE"
+              dotnet build "$SOLUTION_FILE" --configuration Release --no-restore
+            fi
           fi
 
       # Empaquetar el proyecto WebApi
@@ -78,8 +79,14 @@ jobs:
         if: success()
         run: |
           if [ -f "Bank/Bank.WebApi/Bank.WebApi.csproj" ]; then
-            cd Bank
-            dotnet pack Bank.WebApi/Bank.WebApi.csproj --configuration Release --output ../nupkg
+            echo "Empaquetando WebApi con ruta completa"
+            dotnet pack "Bank/Bank.WebApi/Bank.WebApi.csproj" --configuration Release --no-build --output nupkg
+          else
+            PROJECT_FILE=$(find . -type f -path "*/Bank.WebApi/*.csproj" | head -n 1)
+            if [ -n "$PROJECT_FILE" ]; then
+              echo "Empaquetando con archivo encontrado: $PROJECT_FILE"
+              dotnet pack "$PROJECT_FILE" --configuration Release --no-build --output nupkg
+            fi
           fi
 
       # Publicar el paquete
