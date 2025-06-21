@@ -12,13 +12,54 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Copiar disenio.md de Bank a la raíz
-      - name: Copy design document to root
+      # Verificar si disenio.md ya existe en la raíz
+      - name: Check design document
         run: |
-          # Copiar el archivo de diseño de Bank a la raíz
-          cp Bank/disenio.md ./disenio.md
-          echo "File copied to root:"
-          ls -la disenio.md
+          if [ -f "disenio.md" ]; then
+            echo "Design file already exists in root:"
+            ls -la disenio.md
+          else
+            echo "Creating disenio.md in root directory..."
+            cat > disenio.md << EOL
+# Diseño de la Aplicación Bank
+
+Este documento describe el diseño y arquitectura de la aplicación Bank.
+
+## Arquitectura
+
+\`\`\`mermaid
+graph TD
+    Client[Cliente] --> API[API REST]
+    API --> Service[Servicio Banco]
+    Service --> Repository[Repositorio]
+    Repository --> Database[(Base de datos)]
+\`\`\`
+
+## Modelo de Datos
+
+\`\`\`mermaid
+classDiagram
+    class Account {
+        +string Id
+        +string Owner
+        +decimal Balance
+        +DateTime Created
+        +Deposit(amount)
+        +Withdraw(amount)
+    }
+    
+    class Transaction {
+        +string Id
+        +string AccountId
+        +decimal Amount
+        +DateTime Date
+        +TransactionType Type
+    }
+    
+    Account "1" -- "many" Transaction
+\`\`\`
+EOL
+          fi
 
       # Configurar Ruby
       - name: Set up Ruby
