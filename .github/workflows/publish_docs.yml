@@ -1,31 +1,23 @@
-name: Publish DocFX Documentation
+name: Deploy GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main] # o master
 
 jobs:
-  build-docs:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      
+      - name: Build GitHub Pages
+        uses: actions/jekyll-build-pages@v1
         with:
-          dotnet-version: '8.0.x'
-
-      - name: Install DocFX
-        run: dotnet tool install -g docfx
-
-      - name: Generate DocFX Metadata
-        run: docfx metadata docfx.json
-
-      - name: Build DocFX Site
-        run: docfx build docfx.json
-
-      - name: Build and deploy
+          source: ./Bank/docs # Cambia esto para usar la carpeta Bank/docs
+          destination: ./_site
+      
+      - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./Bank/docs
+          publish_dir: ./_site
