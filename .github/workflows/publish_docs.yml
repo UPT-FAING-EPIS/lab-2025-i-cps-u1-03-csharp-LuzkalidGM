@@ -18,7 +18,7 @@ jobs:
         with:
           ruby-version: '3.1'
 
-      # Mostrar la estructura de directorios para diagnóstico
+      # Diagnóstico más detallado para identificar problemas
       - name: Check directory structure
         run: |
           echo "Checking directory structure..."
@@ -28,7 +28,53 @@ jobs:
           echo "Bank/docs directory contents:"
           ls -la Bank/docs/
           echo "Bank/docs/assets/css directory contents:"
-          ls -la Bank/docs/assets/css/
+          ls -la Bank/docs/assets/css/ || echo "CSS directory not found"
+          
+          # Verifica si existe el directorio docs en la raíz
+          if [ -d "docs" ]; then
+            echo "WARNING: 'docs' directory exists in root and might conflict"
+          fi
+
+      # Crear los archivos necesarios manualmente para garantizar su existencia
+      - name: Create needed Jekyll files
+        run: |
+          # Asegurarse que el directorio assets/css existe en Bank/docs
+          mkdir -p Bank/docs/assets/css
+          
+          # Asegurarse que el archivo _config.yml existe
+          if [ ! -f "Bank/docs/_config.yml" ]; then
+            echo "Creating _config.yml..."
+            cat > Bank/docs/_config.yml << EOL
+          theme: jekyll-theme-minimal
+          title: Bank API Documentation
+          description: Documentation for the Bank API project
+          EOL
+          fi
+          
+          # Asegurarse que el archivo style.scss existe
+          if [ ! -f "Bank/docs/assets/css/style.scss" ]; then
+            echo "Creating style.scss..."
+            cat > Bank/docs/assets/css/style.scss << EOL
+          ---
+          ---
+          
+          @import "{{ site.theme }}";
+          EOL
+          fi
+          
+          # Crear un index.md si no existe
+          if [ ! -f "Bank/docs/index.md" ]; then
+            echo "Creating index.md..."
+            cat > Bank/docs/index.md << EOL
+          ---
+          layout: default
+          ---
+          
+          # Bank API Documentation
+          
+          Welcome to the Bank API documentation.
+          EOL
+          fi
 
       # Instalar Jekyll y construir el sitio directamente
       - name: Install Jekyll and build site
@@ -49,18 +95,13 @@ jobs:
           cd Bank/docs
           mkdir -p _site
           
-          # Asegurarse de que _config.yml existe
-          if [ ! -f "_config.yml" ]; then
-            echo "Creating _config.yml..."
-            cat > _config.yml << EOL
-          theme: jekyll-theme-minimal
-          title: Bank API Documentation
-          description: Documentation for the Bank API project
-          EOL
-          fi
-          
           echo "Running Jekyll build..."
           bundle exec jekyll build -d ../../_site --baseurl ""
+          
+          # Verificar que _site se creó correctamente
+          cd ../../
+          echo "Checking if _site was created:"
+          ls -la _site
 
       # Publicar en GitHub Pages
       - name: Deploy to GitHub Pages
