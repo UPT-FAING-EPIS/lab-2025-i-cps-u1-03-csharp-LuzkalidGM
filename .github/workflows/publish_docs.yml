@@ -34,6 +34,7 @@ jobs:
       - name: Install Jekyll and build site
         run: |
           gem install bundler jekyll
+          
           echo "Creating Gemfile..."
           cat > Gemfile << EOL
           source 'https://rubygems.org'
@@ -46,7 +47,20 @@ jobs:
           
           echo "Building Jekyll site from Bank/docs..."
           cd Bank/docs
-          bundle exec jekyll build --baseurl "" -d ../../_site
+          mkdir -p _site
+          
+          # Asegurarse de que _config.yml existe
+          if [ ! -f "_config.yml" ]; then
+            echo "Creating _config.yml..."
+            cat > _config.yml << EOL
+          theme: jekyll-theme-minimal
+          title: Bank API Documentation
+          description: Documentation for the Bank API project
+          EOL
+          fi
+          
+          echo "Running Jekyll build..."
+          bundle exec jekyll build -d ../../_site --baseurl ""
 
       # Publicar en GitHub Pages
       - name: Deploy to GitHub Pages
