@@ -15,21 +15,68 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
 
-      - name: Install Semgrep and prospector-html
-        run: |
-          pip install semgrep prospector-html
+      - name: Install Semgrep
+        run: pip install semgrep
 
       - name: Run Semgrep Scan
         run: semgrep scan --config='p/default' . --json --output semgrep.json
 
       - name: Generate HTML report
-        run: prospector-html --input semgrep.json --output semgrep-report.html --filter semgrep
+        run: |
+          echo '<!DOCTYPE html>
+          <html>
+          <head>
+            <title>Semgrep Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              .finding { border: 1px solid #ddd; margin: 10px 0; padding: 10px; border-radius: 5px; }
+              .severe { border-left: 5px solid #d9534f; }
+              .warning { border-left: 5px solid #f0ad4e; }
+              .info { border-left: 5px solid #5bc0de; }
+              pre { background-color: #f5f5f5; padding: 10px; overflow-x: auto; }
+            </style>
+          </head>
+          <body>
+            <h1>Semgrep Analysis Report</h1>
+            <div id="findings"></div>
+            <script>
+              fetch("semgrep.json")
+                .then(response => response.json())
+                .then(data => {
+                  const findings = document.getElementById("findings");
+                  if (data.results && data.results.length > 0) {
+                    data.results.forEach(result => {
+                      const div = document.createElement("div");
+                      div.className = `finding ${result.extra.severity || "info"}`;
+                      div.innerHTML = `
+                        <h3>${result.check_id}</h3>
+                        <p><strong>Severity:</strong> ${result.extra.severity || "Not specified"}</p>
+                        <p><strong>File:</strong> ${result.path}</p>
+                        <p><strong>Line:</strong> ${result.start.line}</p>
+                        <p><strong>Message:</strong> ${result.extra.message}</p>
+                        <pre><code>${result.extra.lines}</code></pre>
+                      `;
+                      findings.appendChild(div);
+                    });
+                  } else {
+                    findings.innerHTML = "<p>No issues found!</p>";
+                  }
+                })
+                .catch(error => {
+                  console.error("Error loading report:", error);
+                  document.getElementById("findings").innerHTML = "<p>Error loading report data.</p>";
+                });
+            </script>
+          </body>
+          </html>' > semgrep-report.html
 
       - name: Upload Semgrep report artifact
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-report
-          path: semgrep-report.html
+          path: |
+            semgrep-report.html
+            semgrep.json
 
       - name: Deploy Semgrep report to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
