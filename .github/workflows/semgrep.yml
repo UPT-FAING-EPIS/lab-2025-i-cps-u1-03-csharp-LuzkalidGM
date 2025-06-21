@@ -79,11 +79,10 @@ jobs:
             semgrep.json
 
       - name: Deploy Semgrep report to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
+          publish_dir: ./  # Directorio donde está el reporte de Semgrep
           publish_branch: gh-pages
-          keep_files: true  # Esto mantiene los archivos existentes en gh-pages
-          destination_dir: semgrep-report  # Esto coloca los informes en una subcarpeta
-          force_orphan: false  # No elimina el historial de la rama
+          destination_dir: semgrep-report  # Esto lo coloca en una subcarpeta en gh-pages
+          keep_files: true  # Importante: mantiene los archivos existentes en gh-pages

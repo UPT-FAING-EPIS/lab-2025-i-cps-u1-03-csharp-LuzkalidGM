@@ -1,23 +1,26 @@
-name: Deploy GitHub Pages
+name: Publish Docs
 
 on:
   push:
-    branches: [main] # o master
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Build GitHub Pages
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Jekyll
         uses: actions/jekyll-build-pages@v1
         with:
-          source: ./Bank/docs # Cambia esto para usar la carpeta Bank/docs
+          source: ./Bank/docs  # Cambiado para usar Bank/docs
           destination: ./_site
-      
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v4
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
+          force_orphan: true  # Esto elimina el historial de la rama gh-pages para mantenerla limpia
