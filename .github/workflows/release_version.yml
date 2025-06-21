@@ -12,91 +12,92 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Asegura que todo el historial esté disponible
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Extensive directory exploration
+      # Paso de diagnóstico super detallado
+      - name: Super detailed diagnostic
         run: |
-          echo "==== CURRENT DIRECTORY STRUCTURE ===="
-          pwd
+          echo "===== WORKSPACE ROOT CONTENTS ====="
           ls -la
           
-          echo "==== ROOT DIRECTORY CONTENTS ===="
-          ls -la /github/workspace/
+          echo "===== CHECKING FOR BANK DIRECTORY (EXACT CASE) ====="
+          find . -maxdepth 1 -type d -name "Bank" | wc -l
           
-          echo "==== ALL SOLUTION FILES IN REPOSITORY ===="
-          find /github/workspace -name "*.sln" -type f
+          echo "===== CHECKING FOR ANY CASE OF BANK ====="
+          find . -maxdepth 1 -type d -iname "bank" | wc -l
           
-          echo "==== ALL PROJECT FILES IN REPOSITORY ===="
-          find /github/workspace -name "*.csproj" -type f
+          echo "===== LISTING ALL DIRECTORIES ====="
+          find . -maxdepth 1 -type d
           
-          echo "==== BANK DIRECTORY CHECK ===="
-          if [ -d "Bank" ]; then
-            echo "Bank directory exists at current location"
-            ls -la Bank/
-          else
-            echo "Bank directory DOES NOT exist at current location"
-          fi
+          echo "===== FINDING ALL .SLN FILES IN REPO ====="
+          find . -name "*.sln"
           
-          echo "==== CHECKING CASE SENSITIVITY ===="
-          ls -la | grep -i bank
-          
-          echo "==== CHECKING ABSOLUTE PATH ===="
-          if [ -f "/github/workspace/Bank/Bank.sln" ]; then
-            echo "Solution file exists at absolute path"
-          else
-            echo "Solution file DOES NOT exist at absolute path"
-          fi
+          echo "===== FINDING ALL .CSPROJ FILES IN REPO ====="
+          find . -name "*.csproj"
 
-      - name: Try different restore approaches
+      # Intento directo con archivos encontrados
+      - name: Direct restore with found solution
         run: |
-          echo "==== APPROACH 1: Using find to locate and restore ===="
-          SOLUTION_PATH=$(find /github/workspace -name "Bank.sln" -type f | head -n 1)
-          if [ -n "$SOLUTION_PATH" ]; then
-            echo "Found solution at: $SOLUTION_PATH"
-            dotnet restore "$SOLUTION_PATH"
-          else
-            echo "No solution file found"
-          fi
+          SOLUTION_FILE=$(find . -name "*.sln" | head -n 1)
           
-          echo "==== APPROACH 2: Try with working directory change ===="
-          BANK_DIR=$(find /github/workspace -name "Bank" -type d | head -n 1)
-          if [ -n "$BANK_DIR" ]; then
-            echo "Found Bank directory at: $BANK_DIR"
-            cd "$BANK_DIR"
-            if [ -f "Bank.sln" ]; then
-              echo "Solution file exists in this directory"
-              dotnet restore
+          if [ -n "$SOLUTION_FILE" ]; then
+            echo "Found solution file: $SOLUTION_FILE"
+            # Verifica que el archivo existe
+            if [ -f "$SOLUTION_FILE" ]; then
+              echo "File exists, attempting restore..."
+              dotnet restore "$SOLUTION_FILE"
             else
-              echo "Solution file not found in Bank directory"
-              ls -la
+              echo "File doesn't actually exist despite find command"
             fi
           else
-            echo "Bank directory not found"
+            echo "No solution file found in repository"
+            
+            # Intenta con proyecto en su lugar
+            PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
+            if [ -n "$PROJECT_FILE" ]; then
+              echo "Found project file: $PROJECT_FILE"
+              dotnet restore "$PROJECT_FILE"
+            else
+              echo "No project files found either"
+            fi
           fi
 
-      - name: Build if restore succeeded
+      # Compilación usando archivos encontrados
+      - name: Build with found files
         if: success()
         run: |
-          SOLUTION_PATH=$(find /github/workspace -name "Bank.sln" -type f | head -n 1)
-          if [ -n "$SOLUTION_PATH" ]; then
-            dotnet build "$SOLUTION_PATH" --configuration Release --no-restore
+          SOLUTION_FILE=$(find . -name "*.sln" | head -n 1)
+          if [ -n "$SOLUTION_FILE" ]; then
+            echo "Building solution: $SOLUTION_FILE"
+            dotnet build "$SOLUTION_FILE" --configuration Release
+          else
+            PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
+            if [ -n "$PROJECT_FILE" ]; then
+              echo "Building project: $PROJECT_FILE"
+              dotnet build "$PROJECT_FILE" --configuration Release
+            fi
           fi
 
-      - name: Pack if build succeeded
+      # Empaquetado con archivos encontrados
+      - name: Pack with found files
         if: success()
         run: |
-          CSPROJ_PATH=$(find /github/workspace -name "Bank.WebApi.csproj" -type f | head -n 1)
-          if [ -n "$CSPROJ_PATH" ]; then
-            dotnet pack "$CSPROJ_PATH" --configuration Release --no-build --output nupkg
+          CSPROJ_FILE=$(find . -name "*.csproj" | head -n 1)
+          if [ -n "$CSPROJ_FILE" ]; then
+            echo "Packing project: $CSPROJ_FILE"
+            dotnet pack "$CSPROJ_FILE" --configuration Release --output nupkg
+          else
+            echo "No project file found for packing"
           fi
 
+      # Publicación del paquete si existe
       - name: Create GitHub Release
-        if: success()
+        if: success() && hashFiles('nupkg/*.nupkg') != ''
         uses: softprops/action-gh-release@v2
         with:
           files: nupkg/*.nupkg
