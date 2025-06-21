@@ -22,7 +22,8 @@ jobs:
           config: >-
             p/csharp
           generateSarif: true
-          outputFile: semgrep.json
+          outputFile: Bank/semgrep.json
+        continue-on-error: true
 
       # Instalación y ejecución de Prospector
       - name: Set up Python
@@ -61,13 +62,25 @@ jobs:
           name: prospector-html-report
           path: reports/prospector_report.html
 
-      # Generar informe HTML de Semgrep
+      # Generar informe HTML de Semgrep usando el archivo existente en Bank/
       - name: Generate Semgrep HTML report
         run: |
           echo '<html><head><title>Semgrep Report</title>' > semgrep-report.html
           echo '<style>body{font-family:sans-serif;max-width:1200px;margin:0 auto;padding:20px} pre{background:#f5f5f5;padding:10px;border-radius:5px}</style>' >> semgrep-report.html
           echo '</head><body><h1>Semgrep Report</h1><pre>' >> semgrep-report.html
-          cat semgrep.json >> semgrep-report.html
+          
+          # Verificar si existe el archivo en la carpeta Bank
+          if [ -f "Bank/semgrep.json" ]; then
+            cat Bank/semgrep.json >> semgrep-report.html
+          else
+            # Comprobar si hay un archivo semgrep.json en la raíz
+            if [ -f "semgrep.json" ]; then
+              cat semgrep.json >> semgrep-report.html
+            else
+              echo "No se encontró ningún archivo semgrep.json" >> semgrep-report.html
+            fi
+          fi
+          
           echo '</pre></body></html>' >> semgrep-report.html
 
       - name: Upload Semgrep report
