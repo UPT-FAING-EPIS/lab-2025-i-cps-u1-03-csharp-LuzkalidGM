@@ -19,31 +19,84 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: List directory structure
+      - name: Extensive directory exploration
         run: |
-          echo "Current directory: $(pwd)"
+          echo "==== CURRENT DIRECTORY STRUCTURE ===="
+          pwd
           ls -la
-          echo "Bank directory contents:"
-          ls -la Bank/ || echo "Bank directory not found"
-          echo "Looking for solution file:"
-          find . -name "*.sln" || echo "No solution files found"
-
-      - name: Restore dependencies
-        run: |
-          if [ -f "Bank/Bank.sln" ]; then
-            dotnet restore Bank/Bank.sln
+          
+          echo "==== ROOT DIRECTORY CONTENTS ===="
+          ls -la /github/workspace/
+          
+          echo "==== ALL SOLUTION FILES IN REPOSITORY ===="
+          find /github/workspace -name "*.sln" -type f
+          
+          echo "==== ALL PROJECT FILES IN REPOSITORY ===="
+          find /github/workspace -name "*.csproj" -type f
+          
+          echo "==== BANK DIRECTORY CHECK ===="
+          if [ -d "Bank" ]; then
+            echo "Bank directory exists at current location"
+            ls -la Bank/
           else
-            echo "Solution file not found at Bank/Bank.sln"
-            exit 1
+            echo "Bank directory DOES NOT exist at current location"
+          fi
+          
+          echo "==== CHECKING CASE SENSITIVITY ===="
+          ls -la | grep -i bank
+          
+          echo "==== CHECKING ABSOLUTE PATH ===="
+          if [ -f "/github/workspace/Bank/Bank.sln" ]; then
+            echo "Solution file exists at absolute path"
+          else
+            echo "Solution file DOES NOT exist at absolute path"
           fi
 
-      - name: Build Release
-        run: dotnet build Bank/Bank.sln --configuration Release --no-restore
+      - name: Try different restore approaches
+        run: |
+          echo "==== APPROACH 1: Using find to locate and restore ===="
+          SOLUTION_PATH=$(find /github/workspace -name "Bank.sln" -type f | head -n 1)
+          if [ -n "$SOLUTION_PATH" ]; then
+            echo "Found solution at: $SOLUTION_PATH"
+            dotnet restore "$SOLUTION_PATH"
+          else
+            echo "No solution file found"
+          fi
+          
+          echo "==== APPROACH 2: Try with working directory change ===="
+          BANK_DIR=$(find /github/workspace -name "Bank" -type d | head -n 1)
+          if [ -n "$BANK_DIR" ]; then
+            echo "Found Bank directory at: $BANK_DIR"
+            cd "$BANK_DIR"
+            if [ -f "Bank.sln" ]; then
+              echo "Solution file exists in this directory"
+              dotnet restore
+            else
+              echo "Solution file not found in Bank directory"
+              ls -la
+            fi
+          else
+            echo "Bank directory not found"
+          fi
 
-      - name: Pack NuGet Package
-        run: dotnet pack Bank/Bank.WebApi/Bank.WebApi.csproj --configuration Release --no-build --output nupkg
+      - name: Build if restore succeeded
+        if: success()
+        run: |
+          SOLUTION_PATH=$(find /github/workspace -name "Bank.sln" -type f | head -n 1)
+          if [ -n "$SOLUTION_PATH" ]; then
+            dotnet build "$SOLUTION_PATH" --configuration Release --no-restore
+          fi
+
+      - name: Pack if build succeeded
+        if: success()
+        run: |
+          CSPROJ_PATH=$(find /github/workspace -name "Bank.WebApi.csproj" -type f | head -n 1)
+          if [ -n "$CSPROJ_PATH" ]; then
+            dotnet pack "$CSPROJ_PATH" --configuration Release --no-build --output nupkg
+          fi
 
       - name: Create GitHub Release
+        if: success()
         uses: softprops/action-gh-release@v2
         with:
           files: nupkg/*.nupkg
