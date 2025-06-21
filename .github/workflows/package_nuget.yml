@@ -80,6 +80,7 @@ jobs:
           cd Bank
           dotnet pack Bank.Domain/Bank.Domain.csproj --configuration Release --output ../nupkg
 
+          
       # Configurar el origen NuGet de GitHub
       - name: Setup GitHub NuGet Source
         run: |
